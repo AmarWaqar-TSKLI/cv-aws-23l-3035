@@ -1,0 +1,5 @@
+*.docx
+*.zip
+.aws/
+*.pem
+.env

@@ -1,0 +1,209 @@
+Evidence collected 2026-10-22T11:17:56Z
+bucket=cv-23l-3035 ec2=http://13.232.129.253 lambda=https://qzzk6phjqkxcprhhdtdgekmyeq0wmsxw.lambda-url.ap-south-1.on.aws region=ap-south-1
+
+== caller ==
+$ aws sts get-caller-identity
+{
+    "UserId": "627551519533",
+    "Account": "627551519533",
+    "Arn": "arn:aws:iam::627551519533:root"
+}
+
+== public-access ==
+$ aws s3api get-public-access-block --bucket cv-23l-3035
+{
+    "PublicAccessBlockConfiguration": {
+        "BlockPublicAcls": true,
+        "IgnorePublicAcls": true,
+        "BlockPublicPolicy": true,
+        "RestrictPublicBuckets": true
+    }
+}
+
+== versioning ==
+$ aws s3api get-bucket-versioning --bucket cv-23l-3035
+{
+    "Status": "Enabled"
+}
+
+== objects ==
+$ aws s3 ls s3://cv-23l-3035/site/ --recursive
+2026-10-22 16:09:23      67521 site/cv.pdf
+2026-10-22 15:59:23       3712 site/index.html
+2026-10-22 15:59:27       1535 site/style.css
+
+== ec2-policy ==
+$ aws iam get-role-policy --role-name cv-ec2-role-23l-3035 --policy-name cv-ec2-s3-read
+{
+    "RoleName": "cv-ec2-role-23l-3035",
+    "PolicyName": "cv-ec2-s3-read",
+    "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "ReadCvObjects",
+                "Effect": "Allow",
+                "Action": "s3:GetObject",
+                "Resource": "arn:aws:s3:::cv-23l-3035/site/*"
+            },
+            {
+                "Sid": "ListCvPrefixOnly",
+                "Effect": "Allow",
+                "Action": "s3:ListBucket",
+                "Resource": "arn:aws:s3:::cv-23l-3035",
+                "Condition": {
+                    "StringEquals": {
+                        "s3:prefix": "site/"
+                    }
+                }
+            }
+        ]
+    }
+}
+
+$ aws iam list-attached-role-policies --role-name cv-ec2-role-23l-3035
+{
+    "AttachedPolicies": []
+}
+
+== lambda-policy ==
+$ aws iam list-attached-role-policies --role-name cv-lambda-role-23l-3035
+{
+    "AttachedPolicies": [
+        {
+            "PolicyName": "AWSLambdaBasicExecutionRole",
+            "PolicyArn": "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+        }
+    ]
+}
+
+$ aws iam get-role-policy --role-name cv-lambda-role-23l-3035 --policy-name cv-lambda-s3-read
+{
+    "RoleName": "cv-lambda-role-23l-3035",
+    "PolicyName": "cv-lambda-s3-read",
+    "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "ReadCvObjects",
+                "Effect": "Allow",
+                "Action": "s3:GetObject",
+                "Resource": "arn:aws:s3:::cv-23l-3035/site/*"
+            }
+        ]
+    }
+}
+
+== security-group ==
+$ aws ec2 describe-security-groups --region ap-south-1 --group-ids sg-0f05daa3b9542ca08 --query SecurityGroups[].{GroupId:GroupId,GroupName:GroupName,Inbound:IpPermissions}
+[
+    {
+        "GroupId": "sg-0f05daa3b9542ca08",
+        "GroupName": "cv-sg-23l-3035",
+        "Inbound": [
+            {
+                "IpProtocol": "tcp",
+                "FromPort": 80,
+                "ToPort": 80,
+                "UserIdGroupPairs": [],
+                "IpRanges": [
+                    {
+                        "Description": "HTTP from anywhere",
+                        "CidrIp": "0.0.0.0/0"
+                    }
+                ],
+                "Ipv6Ranges": [],
+                "PrefixListIds": []
+            },
+            {
+                "IpProtocol": "tcp",
+                "FromPort": 22,
+                "ToPort": 22,
+                "UserIdGroupPairs": [],
+                "IpRanges": [
+                    {
+                        "Description": "SSH from my IP only",
+                        "CidrIp": "116.58.41.157/32"
+                    }
+                ],
+                "Ipv6Ranges": [],
+                "PrefixListIds": []
+            }
+        ]
+    }
+]
+
+== instance ==
+$ aws ec2 describe-instances --region ap-south-1 --filters Name=tag:Name,Values=cv-ec2-23l-3035 Name=instance-state-name,Values=running --query Reservations[].Instances[].{Id:InstanceId,Type:InstanceType,State:State.Name,PublicIp:PublicIpAddress,HttpTokens:MetadataOptions.HttpTokens,InstanceProfile:IamInstanceProfile.Arn,Tags:Tags}
+[
+    {
+        "Id": "i-0191d93f7c8dc061e",
+        "Type": "t3.micro",
+        "State": "running",
+        "PublicIp": "13.232.129.253",
+        "HttpTokens": "required",
+        "InstanceProfile": "arn:aws:iam::627551519533:instance-profile/cv-ec2-role-23l-3035",
+        "Tags": [
+            {
+                "Key": "Course",
+                "Value": "cloud"
+            },
+            {
+                "Key": "Owner",
+                "Value": "23l-3035"
+            },
+            {
+                "Key": "Name",
+                "Value": "cv-ec2-23l-3035"
+            }
+        ]
+    }
+]
+
+== endpoints ==
+label                  status content-type url
+ec2 /                  200 text/html http://13.232.129.253/
+ec2 /style.css         200 text/css http://13.232.129.253/style.css
+ec2 /cv.pdf            200 application/pdf http://13.232.129.253/cv.pdf
+lambda /               200 text/html; charset=utf-8 https://qzzk6phjqkxcprhhdtdgekmyeq0wmsxw.lambda-url.ap-south-1.on.aws/
+lambda /style.css      200 text/css; charset=utf-8 https://qzzk6phjqkxcprhhdtdgekmyeq0wmsxw.lambda-url.ap-south-1.on.aws/style.css
+lambda /cv.pdf         200 application/pdf https://qzzk6phjqkxcprhhdtdgekmyeq0wmsxw.lambda-url.ap-south-1.on.aws/cv.pdf
+lambda /anything       404 text/html; charset=utf-8 https://qzzk6phjqkxcprhhdtdgekmyeq0wmsxw.lambda-url.ap-south-1.on.aws/anything
+s3 direct index.html   403 application/xml https://cv-23l-3035.s3.ap-south-1.amazonaws.com/site/index.html
+
+== lambda-logs ==
+$ aws logs tail /aws/lambda/cv-func-23l-3035 --region ap-south-1 --since 1h --format short --filter-pattern { $.path = * }
+2026-10-22T11:02:06 {"fn": "cv-func-23l-3035", "path": "/", "status": 200, "ms": 275.9}
+2026-10-22T11:02:07 {"fn": "cv-func-23l-3035", "path": "/index.html", "status": 200, "ms": 19.3}
+2026-10-22T11:02:08 {"fn": "cv-func-23l-3035", "path": "/style.css", "status": 200, "ms": 24.6}
+2026-10-22T11:02:08 {"fn": "cv-func-23l-3035", "path": "/cv.pdf", "status": 200, "ms": 25.4}
+2026-10-22T11:02:09 {"fn": "cv-func-23l-3035", "path": "/anything", "status": 404, "ms": 0.0}
+2026-10-22T11:02:09 {"fn": "cv-func-23l-3035", "path": "/", "status": 200, "ms": 38.3}
+2026-10-22T11:02:10 {"fn": "cv-func-23l-3035", "path": "/", "status": 200, "ms": 25.9}
+2026-10-22T11:02:10 {"fn": "cv-func-23l-3035", "path": "/cv.pdf", "status": 200, "ms": 21.2}
+2026-10-22T11:04:29 {"fn": "cv-func-23l-3035", "path": "/", "status": 200, "ms": 253.4}
+2026-10-22T11:04:29 {"fn": "cv-func-23l-3035", "path": "/style.css", "status": 200, "ms": 24.6}
+2026-10-22T11:04:30 {"fn": "cv-func-23l-3035", "path": "/cv.pdf", "status": 200, "ms": 21.6}
+2026-10-22T11:04:30 {"fn": "cv-func-23l-3035", "path": "/anything", "status": 404, "ms": 0.0}
+2026-10-22T11:11:37 {"fn": "cv-func-23l-3035", "path": "/cv.pdf", "status": 200, "ms": 286.3}
+2026-10-22T11:12:41 {"fn": "cv-func-23l-3035", "path": "/", "status": 200, "ms": 209.7}
+2026-10-22T11:12:41 {"fn": "cv-func-23l-3035", "path": "/style.css", "status": 200, "ms": 33.3}
+2026-10-22T11:12:42 {"fn": "cv-func-23l-3035", "path": "/cv.pdf", "status": 200, "ms": 26.7}
+2026-10-22T11:12:42 {"fn": "cv-func-23l-3035", "path": "/anything", "status": 404, "ms": 0.0}
+2026-10-22T11:16:48 {"fn": "cv-func-23l-3035", "path": "/", "status": 200, "ms": 241.2}
+2026-10-22T11:16:50 {"fn": "cv-func-23l-3035", "path": "/style.css", "status": 200, "ms": 47.3}
+2026-10-22T11:16:50 {"fn": "cv-func-23l-3035", "path": "/favicon.ico", "status": 404, "ms": 0.0}
+2026-10-22T11:17:26 {"fn": "cv-func-23l-3035", "path": "/", "status": 200, "ms": 292.9}
+2026-10-22T11:17:26 {"fn": "cv-func-23l-3035", "path": "/style.css", "status": 200, "ms": 29.8}
+2026-10-22T11:17:26 {"fn": "cv-func-23l-3035", "path": "/cv.pdf", "status": 200, "ms": 32.5}
+2026-10-22T11:17:27 {"fn": "cv-func-23l-3035", "path": "/anything", "status": 404, "ms": 0.0}
+
+== log-retention ==
+$ aws logs describe-log-groups --region ap-south-1 --log-group-name-prefix /aws/lambda/cv-func-23l-3035 --query logGroups[].{name:logGroupName,retentionInDays:retentionInDays}
+[
+    {
+        "name": "/aws/lambda/cv-func-23l-3035",
+        "retentionInDays": 7
+    }
+]
+
